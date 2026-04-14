@@ -118,7 +118,7 @@ def load_settings() -> Settings:
     settings = Settings(
         google_access_mode=google_access_mode,
         bot_token=_resolve_bot_token(),
-        report_recipient_label=os.getenv("REPORT_RECIPIENT_LABEL", "@zykovsrg").strip() or "@zykovsrg",
+        report_recipient_label=os.getenv("REPORT_RECIPIENT_LABEL", "аккаунт редактора в MAX").strip() or "аккаунт редактора в MAX",
         spreadsheet_url=_require_env("GOOGLE_SPREADSHEET_URL"),
         comments_spreadsheet_url=os.getenv("COMMENTS_SPREADSHEET_URL", "").strip() or None,
         source_sheet_name=os.getenv("GOOGLE_SOURCE_SHEET_NAME", "Темы МКБ").strip(),

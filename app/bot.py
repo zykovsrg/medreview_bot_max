@@ -44,6 +44,7 @@ def build_commands() -> list[BotCommand]:
     return [
         BotCommand(name="/start", description="Перезапустить сценарий"),
         BotCommand(name="/register_report_chat", description="Зарегистрировать чат редактора"),
+        BotCommand(name="/report_chat_status", description="Показать чат для итоговых отчётов"),
     ]
 
 
@@ -217,7 +218,7 @@ def create_router(repository: GoogleRepository, storage: Storage, settings, remi
         if report_chat is None:
             await message.answer(
                 f"{missing_chat_text} "
-                f"Нужно сначала зарегистрировать чат {settings.report_recipient_label} через /register_report_chat."
+                "Нужно открыть бота из нужного аккаунта MAX и отправить команду /register_report_chat."
             )
             return "missing_report_chat"
 
@@ -282,7 +283,7 @@ def create_router(repository: GoogleRepository, storage: Storage, settings, remi
         if report_chat is None:
             return (
                 "Отчёт не отправлен: чат для отчётов ещё не зарегистрирован. "
-                f"Откройте бота из аккаунта {settings.report_recipient_label} и отправьте команду /register_report_chat."
+                "Откройте бота из нужного аккаунта MAX и отправьте команду /register_report_chat."
             )
 
         try:
@@ -291,7 +292,7 @@ def create_router(repository: GoogleRepository, storage: Storage, settings, remi
                 user_id=report_chat.user_id,
                 text=report_text,
             )
-            return f"Итоговый отчёт отправлен в {report_chat.label or settings.report_recipient_label}."
+            return f"Итоговый отчёт отправлен в {report_chat.label or 'зарегистрированный чат редактора'}."
         except Exception:
             logger.exception("Failed to send report message")
             return "Статус обновлён, но отчёт отправить не удалось."
@@ -530,13 +531,36 @@ def create_router(repository: GoogleRepository, storage: Storage, settings, remi
     @router.message_created(Command("register_report_chat"))
     async def handle_register_report_chat(event: MessageCreated) -> None:
         user = event.message.sender
-        label = f"@{user.username}" if user.username else user.full_name
+        label = user.full_name or f"MAX user {user.user_id}"
         storage.set_report_chat(
             chat_id=event.chat.chat_id,
             user_id=user.user_id,
             label=label,
         )
-        await event.message.answer(f"Этот чат зарегистрирован для итоговых отчётов. Сейчас отчёты будут уходить сюда: {label}")
+        await event.message.answer(
+            "Этот чат зарегистрирован для итоговых отчётов.\n"
+            f"Сейчас отчёты будут уходить сюда: {label}.\n\n"
+            "Если позже нужно сменить получателя, просто откройте бота из другого аккаунта MAX "
+            "и снова отправьте /register_report_chat."
+        )
+
+    @router.message_created(Command("report_chat_status"))
+    async def handle_report_chat_status(event: MessageCreated) -> None:
+        report_chat = storage.get_report_chat()
+        if report_chat is None:
+            await event.message.answer(
+                "Чат для итоговых отчётов пока не зарегистрирован.\n"
+                "Откройте бота из нужного аккаунта MAX и отправьте команду /register_report_chat."
+            )
+            return
+
+        destination = report_chat.label or "зарегистрированный чат редактора"
+        await event.message.answer(
+            "Сейчас итоговые отчёты отправляются сюда:\n"
+            f"{destination}\n\n"
+            "Если нужно сменить получателя, откройте бота из другого аккаунта MAX "
+            "и отправьте /register_report_chat."
+        )
 
     @router.message_created(F.message.body.text, BotStates.waiting_surname)
     async def handle_surname(event: MessageCreated, context: MemoryContext) -> None:
