@@ -1,0 +1,11 @@
+services:
+  medreview-bot-max:
+    build: .
+    container_name: medreview-bot-max
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
