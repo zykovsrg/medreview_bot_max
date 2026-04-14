@@ -1,4 +1,4 @@
-maxapi @ git+https://github.com/max-messenger/max-botapi-python.git
+maxapi==0.9.16
 google-api-python-client>=2.165.0,<3.0
 google-auth>=2.39.0,<3.0
 python-dotenv>=1.0.1,<2.0
