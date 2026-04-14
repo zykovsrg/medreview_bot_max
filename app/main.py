@@ -40,17 +40,24 @@ async def main() -> None:
         connector_ssl = ssl.create_default_context(cafile=str(settings.max_ca_bundle))
 
     connector = aiohttp.TCPConnector(ssl=connector_ssl)
-    default_connection = DefaultConnectionProperties(
-        connector=connector,
-        headers={"Authorization": settings.bot_token},
-    )
+    default_connection = DefaultConnectionProperties(connector=connector)
 
     bot = Bot(settings.bot_token, default_connection=default_connection)
-    # The Python library still defaults to the old host `botapi.max.ru`.
-    # Current official MAX API docs use `platform-api.max.ru`.
-    bot.API_URL = "https://platform-api.max.ru"
-    # Official MAX docs require token in Authorization header, not in query params.
-    bot.params = {}
+    # Different maxapi releases expose the API host differently.
+    if hasattr(bot, "set_api_url"):
+        bot.set_api_url("https://platform-api.max.ru")
+    elif hasattr(bot, "api_url"):
+        bot.api_url = "https://platform-api.max.ru"
+    else:
+        bot.API_URL = "https://platform-api.max.ru"
+
+    # Older library releases still send access_token via query params.
+    if hasattr(bot, "params"):
+        bot.params = {}
+    # Newer releases already keep Authorization header on bot.headers.
+    if hasattr(bot, "headers"):
+        bot.headers = {"Authorization": settings.bot_token}
+
     dispatcher = Dispatcher()
 
     storage = Storage(settings.db_path)
@@ -62,7 +69,10 @@ async def main() -> None:
 
     while True:
         try:
-            await bot.set_my_commands(*build_commands())
+            try:
+                await bot.set_my_commands(*build_commands())
+            except Exception:
+                logger.exception("Failed to update MAX bot commands. Continuing without command sync.")
 
             if settings.delivery_mode == "webhook":
                 if settings.webhook_public_url:
